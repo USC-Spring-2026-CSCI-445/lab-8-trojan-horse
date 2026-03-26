@@ -224,12 +224,18 @@ class ParticleFilter:
                     return False
             return True
         log_p = math.log(1.0 / self._n_particles) #init log prob is same due to uniform distribution
+        ampts = 0
+        max_ampts = self._n_particles *20 #preventing an infinite loop
         while len(self._particles) < self._n_particles: #add particles til content
             x_value = uniform(x_minimum, x_maximum) #sampling
             y_value = uniform(y_minimum, y_maximum)
             theta_value = uniform(-math.pi, math.pi)
             if valid(x_value, y_value): #if valid add particle
                 self._particles.append(Particle(x_value, y_value, theta_value, log_p))
+            ampts += 1
+        while len(self._particles) < self._n_particles: #add more particles without checking
+            self._particles.append(Particle(uniform(x_minimum, x_maximum), uniform(y_minimum, y_maximum),
+            uniform(-math.pi,math.pi, log_p)))
         ######### Your code ends here #########
 
     def visualize_particles(self):
@@ -277,8 +283,10 @@ class ParticleFilter:
             if valid(next_x, next_y):
                 p.x = next_x
                 p.y = next_y
+            else: # add some noise for the particles
+                p.x = p.x + np.random.normal(0, self._translation_variance)
+                p.y = p.y + np.random.normal(0, self._translation_variance)
             p.theta = next_theta
-            
         ######### Your code ends here #########
 
     def measure(self, z: float, scan_angle_in_rad: float):
@@ -331,7 +339,7 @@ class ParticleFilter:
         newp = []
         unilogp = math.log(1.0 / self._n_particles)
         for r in resampled_particles: #get the new particles and reset the log probs to a uniform dist
-            p = r
+            #p = r
             newp.append(Particle(p.x, p.y, p.theta, unilogp))
         self._particles = newp
         ######### Your code ends here #########
@@ -484,7 +492,7 @@ class Controller:
             else:
                 stable = 0
             
-            if step>=7 or stable >=3:
+            if step>=7 or stable >=5:
                 print("auto exploration is done")
                 break
             rate.sleep()
@@ -583,8 +591,8 @@ if __name__ == "__main__":
         map_aabb = map_["map_aabb"]
 
     map_ = Map(obstacles, map_aabb)
-    num_particles = 200
-    translation_variance = 0.1
+    num_particles = 500
+    translation_variance = 0.01
     rotation_variance = 0.05
     measurement_variance = 0.1
     particle_filter = ParticleFilter(map_, num_particles, translation_variance, rotation_variance, measurement_variance)
@@ -633,3 +641,4 @@ if __name__ == "__main__":
 
     except rospy.ROSInterruptException:
         print("Shutting down...")
+
